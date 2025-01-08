@@ -30,6 +30,7 @@ export default async function BlogPostPage({
 }) {
   const { id } = params; // IDを直接取得
   const post = await getBlogPost(id);
+  console.log(post);
 
   // dayjsを使ってpublishedAtを指定の形式に変換
   const formattedDate = dayjs(post.publishedAt).format("YYYY/MM/DD HH:mm");
@@ -60,9 +61,12 @@ export default async function BlogPostPage({
 
 // 静的パスを生成
 export async function generateStaticParams() {
-  const contentIds = await client.getAllContentIds({ endpoint: "blog" });
+  const data = await client.get({
+    endpoint: "blog",
+    queries: { fields: "id", limit: 100 },
+  });
 
-  return contentIds.map((contentId: string) => ({
-    id: contentId, // 各記事のIDをパラメータとして返す
+  return data.contents.map((post: { id: string }) => ({
+    id: post.id,
   }));
 }
