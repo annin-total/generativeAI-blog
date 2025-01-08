@@ -1,14 +1,10 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
 import { client } from "../../../libs/microcms";
 import dayjs from "dayjs";
-import { useEffect, useRef, useState } from "react";
-import LoadingSpinner from "@/components/LoadingSpinner";
 
 // 型定義
-type Post = {
+type Props = {
   id: string;
   title: string;
   publishedAt: string;
@@ -18,7 +14,14 @@ type Post = {
 };
 
 // 1ページあたりの記事数
-const PER_PAGE = 4;
+const PER_PAGE = 3;
+
+// 検索パラメータの型定義
+type SearchParams = {
+  searchParams: {
+    page?: string;
+  };
+};
 
 // ブログ記事を取得
 async function getBlogPosts(offset = 0) {
@@ -31,74 +34,19 @@ async function getBlogPosts(offset = 0) {
     },
   });
   return {
-    posts: data.contents as Post[],
-    totalCount: data.totalCount as number,
+    posts: data.contents,
+    totalCount: data.totalCount,
   };
 }
 
-export default function BlogList() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const offset = useRef(0);
+export default async function BlogList({ searchParams }: SearchParams) {
+  // 現在のページ番号を取得（デフォルトは1）
+  const currentPage = Number(searchParams.page) || 1;
+  const offset = (currentPage - 1) * PER_PAGE;
 
-  // 初回読み込み
-  useEffect(() => {
-    loadInitialPosts();
-  }, []);
-
-  // Intersection Observer の設定
-  useEffect(() => {
-    if (!hasMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isLoading) {
-          loadMorePosts();
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    const target = document.getElementById("scroll-trigger");
-    if (target) observer.observe(target);
-
-    return () => {
-      if (target) observer.unobserve(target);
-    };
-  }, [isLoading, hasMore]);
-
-  // 初期データの読み込み
-  const loadInitialPosts = async () => {
-    setIsLoading(true);
-    try {
-      const { posts: initialPosts, totalCount: total } = await getBlogPosts();
-      setPosts(initialPosts);
-      setTotalCount(total);
-      offset.current = initialPosts.length;
-      setHasMore(initialPosts.length < total);
-    } catch (error) {
-      console.error("Failed to load initial posts:", error);
-    }
-    setIsLoading(false);
-  };
-
-  // 追加データの読み込み
-  const loadMorePosts = async () => {
-    if (isLoading || !hasMore) return;
-
-    setIsLoading(true);
-    try {
-      const { posts: newPosts } = await getBlogPosts(offset.current);
-      setPosts((prev) => [...prev, ...newPosts]);
-      offset.current += newPosts.length;
-      setHasMore(offset.current < totalCount);
-    } catch (error) {
-      console.error("Failed to load more posts:", error);
-    }
-    setIsLoading(false);
-  };
+  // 記事データとトータル件数を取得
+  const { posts, totalCount } = await getBlogPosts(offset);
+  const totalPages = Math.ceil(totalCount / PER_PAGE);
 
   return (
     <div>
@@ -107,7 +55,8 @@ export default function BlogList() {
         <p className="text-gray-600">全{totalCount}件の記事</p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+      {/* 記事一覧 */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 mb-12">
         {posts.map((post) => (
           <article
             key={post.id}
@@ -148,10 +97,45 @@ export default function BlogList() {
         ))}
       </div>
 
-      {/* スクロールトリガー要素 */}
-      {hasMore && (
-        <div id="scroll-trigger" className="mt-8">
-          {isLoading && <LoadingSpinner />}
+      {/* ページネーション */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2">
+          {currentPage > 1 && (
+            <Link
+              href={`/blog?page=${currentPage - 1}`}
+              className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+            >
+              前のページ
+            </Link>
+          )}
+          <div className="flex items-center gap-2">
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              const isCurrentPage = page === currentPage;
+
+              return (
+                <Link
+                  key={page}
+                  href={`/blog?page=${page}`}
+                  className={`px-4 py-2 text-sm rounded ${
+                    isCurrentPage
+                      ? "bg-blue-600 text-white"
+                      : "border hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </Link>
+              );
+            })}
+          </div>
+          {currentPage < totalPages && (
+            <Link
+              href={`/blog?page=${currentPage + 1}`}
+              className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+            >
+              次のページ
+            </Link>
+          )}
         </div>
       )}
     </div>
