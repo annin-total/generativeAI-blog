@@ -4,6 +4,7 @@ import "./globals.css";
 import CategoryList from "@/components/CategoryList";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+import Link from "next/link";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,6 +66,13 @@ export default function RootLayout({
                     </a>
                   </div>
                 </div>
+                <Link
+                  href="/blog"
+                  className="block bg-white hover:shadow-md rounded-lg px-4 py-2 mb-4 flex items-center justify-between transition-all duration-300 ease-in-out"
+                >
+                  <span>全ての記事を見る</span>
+                  <i className="fa-solid fa-arrow-right ml-2"></i>
+                </Link>
                 <CategoryList />
               </div>
             </aside>
