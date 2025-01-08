@@ -24,6 +24,7 @@ export default async function CategoryList() {
               href={`/blog/category/${category.id}`}
               className="hover:text-blue-500"
             >
+              <i className="fa-solid fa-tag text-gray-500 mr-2"></i>
               {category.name}
             </Link>
           </li>

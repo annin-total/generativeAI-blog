@@ -28,34 +28,67 @@ export default async function BlogPostPage({
 }: {
   params: { id: string };
 }) {
-  const { id } = params; // IDを直接取得
+  const { id } = params;
   const post = await getBlogPost(id);
-  console.log(post);
 
-  // dayjsを使ってpublishedAtを指定の形式に変換
   const formattedDate = dayjs(post.publishedAt).format("YYYY/MM/DD HH:mm");
   const formattedUpdatedDate = dayjs(post.updatedAt).format("YYYY/MM/DD HH:mm");
 
   return (
-    <main>
-      <Image
-        src={post.eyecatch.url}
-        alt={post.title}
-        width={800}
-        height={400}
-        priority
+    <article className="max-w-3xl mx-auto">
+      {/* ヘッダー情報 */}
+      <header className="mb-12">
+        <h1 className="text-3xl md:text-4xl font-bold leading-snug mb-6">
+          {post.title}
+        </h1>
+        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+          <time dateTime={post.publishedAt} className="flex items-center">
+            <i className="fas fa-clock text-sm mr-1.5"></i>
+            {formattedDate}
+          </time>
+          {post.publishedAt !== post.updatedAt && (
+            <time dateTime={post.updatedAt} className="flex items-center">
+              <i className="fas fa-pencil text-sm mr-1.5"></i>
+              {formattedUpdatedDate}
+            </time>
+          )}
+          <span className="flex items-center">
+            <i className="fa-solid fa-tag text-sm mr-1.5"></i>
+            {post.category.name}
+          </span>
+        </div>
+      </header>
+
+      {/* アイキャッチ画像 */}
+      <div className="mb-12 aspect-[16/9] relative rounded-lg overflow-hidden">
+        <Image
+          src={post.eyecatch.url}
+          alt={post.title}
+          fill
+          priority
+          className="object-cover"
+        />
+      </div>
+
+      {/* 記事本文 */}
+      <div
+        className="prose prose-lg max-w-none
+          prose-headings:font-bold prose-headings:text-gray-900 prose-headings:leading-snug
+          prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6
+          prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4
+          prose-p:leading-relaxed prose-p:text-gray-700
+          prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+          prose-img:rounded-lg prose-img:mx-auto
+          prose-strong:text-gray-900 prose-strong:font-semibold
+          prose-blockquote:text-gray-600 prose-blockquote:border-l-4 prose-blockquote:border-gray-300
+          prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200
+          prose-code:text-gray-800 prose-code:bg-gray-100 prose-code:px-1 prose-code:rounded
+          prose-ul:list-disc prose-ol:list-decimal
+          prose-li:text-gray-700 prose-li:leading-relaxed
+          prose-hr:my-8 prose-hr:border-gray-200"
+        dangerouslySetInnerHTML={{ __html: post.body }}
       />
-      <h1>{post.title}</h1> {/* タイトルを表示 */}
-      <div>公開日：{formattedDate}</div> {/* 日付を表示 */}
-      {post.publishedAt !== post.updatedAt && (
-        <div>更新日：{formattedUpdatedDate}</div>
-        /* 更新日付を表示（公開日と異なる場合のみ） */
-      )}
-      <div>カテゴリー：{post.category && post.category.name}</div>{" "}
-      {/* カテゴリーを表示 */}
-      <div dangerouslySetInnerHTML={{ __html: post.body }} />{" "}
-      {/* 記事本文を表示 */}
-    </main>
+    </article>
   );
 }
 
