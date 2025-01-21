@@ -27,6 +27,12 @@ type BlogPost = {
   eyecatch: { url: string };
 };
 
+// paramsの型定義を追加
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+
 // microCMSから特定の記事を取得
 async function getBlogPost(id: string): Promise<BlogPost> {
   const data = await client.get({
@@ -66,7 +72,8 @@ async function addComment(blogId: string, name: string, content: string) {
   }
 }
 
-export default function BlogPostPage({ params }: { params: { id: string } }) {
+// コンポーネントの型定義を修正
+export default function BlogPostPage({ params }: PageProps) {
   const [post, setPost] = useState<BlogPost | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,11 +107,12 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
       const updatedComments = await getComments(params.id);
       setComments(updatedComments);
       alert("コメントを投稿しました！");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("コメントの投稿に失敗しました:", error);
       alert(
-        error?.message ||
-          "コメントの投稿に失敗しました。書き込み用APIキーが正しく設定されているか確認してください。"
+        error instanceof Error
+          ? error.message
+          : "コメントの投稿に失敗しました。書き込み用APIキーが正しく設定されているか確認してください。"
       );
     }
   };
@@ -167,7 +175,7 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
       {/* コメントセクション */}
       <div className="mt-16 border-t pt-8">
         <h2 className="text-2xl font-bold mb-8 flex items-center">
-          <i className="fas fa-comments text-green-400 mr-3"></i>
+          <i className="fas fa-comments text-blue-400 mr-3"></i>
           コメント
         </h2>
 
@@ -209,7 +217,7 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
         {/* コメントフォーム */}
         <div>
           <h3 className="text-xl font-bold mb-4 flex items-center">
-            <i className="fas fa-edit text-green-400 mr-3"></i>
+            <i className="fas fa-edit text-blue-400 mr-3"></i>
             コメントを投稿
           </h3>
           <CommentForm onSubmit={handleCommentSubmit} />
