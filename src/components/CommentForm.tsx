@@ -3,22 +3,22 @@
 import { useState } from "react";
 
 type CommentFormProps = {
-  onSubmit: (authorName: string, content: string) => Promise<void>;
+  onSubmit: (name: string, content: string) => Promise<void>;
 };
 
 export default function CommentForm({ onSubmit }: CommentFormProps) {
-  const [authorName, setAuthorName] = useState("");
+  const [name, setName] = useState("");
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authorName.trim() || !content.trim()) return;
+    if (!name.trim() || !content.trim()) return;
 
     setIsSubmitting(true);
     try {
-      await onSubmit(authorName, content);
-      setAuthorName("");
+      await onSubmit(name, content);
+      setName("");
       setContent("");
     } catch (error) {
       console.error("Failed to submit comment:", error);
@@ -31,17 +31,17 @@ export default function CommentForm({ onSubmit }: CommentFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label
-          htmlFor="authorName"
+          htmlFor="name"
           className="block text-sm font-medium text-gray-700"
         >
           お名前
         </label>
         <input
           type="text"
-          id="authorName"
-          value={authorName}
-          onChange={(e) => setAuthorName(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mt-1 block w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
           required
         />
       </div>
@@ -57,7 +57,7 @@ export default function CommentForm({ onSubmit }: CommentFormProps) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={4}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="mt-1 block w-full rounded-md border shadow-sm focus:border-blue-500 focus:ring-blue-500"
           required
         />
       </div>

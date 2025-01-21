@@ -36,3 +36,17 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 # blog-with-microcms
 # generativeAI-blog
+
+
+…or create a new repository on the command line
+echo "# generativeAI-blog" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/annin-total/generativeAI-blog.git
+git push -u origin main
+…or push an existing repository from the command line
+git remote add origin https://github.com/annin-total/generativeAI-blog.git
+git branch -M main
+git push -u origin main

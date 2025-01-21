@@ -1,20 +1,23 @@
 // app/blog/[id]/page.tsx
 "use client";
 
-import { client } from "../../../../libs/microcms";
+import { client, writeClient } from "../../../../libs/microcms";
 import dayjs from "dayjs";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import CommentForm from "@/components/CommentForm";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
-// 型定義を拡張
+// 型定義を修正
 type Comment = {
-  commentAuthorName: string;
-  commentContent: string;
-  commentCreatedAt: string;
+  id: string;
+  name: string;
+  content: string;
+  postedAt: string;
+  blogId: string;
 };
 
-type Props = {
+type BlogPost = {
   id: string;
   title: string;
   body: string;
@@ -22,11 +25,10 @@ type Props = {
   updatedAt: string;
   category: { name: string };
   eyecatch: { url: string };
-  comments?: Comment[];
 };
 
 // microCMSから特定の記事を取得
-async function getBlogPost(id: string): Promise<Props> {
+async function getBlogPost(id: string): Promise<BlogPost> {
   const data = await client.get({
     endpoint: "blog",
     contentId: id,
@@ -34,52 +36,29 @@ async function getBlogPost(id: string): Promise<Props> {
   return data;
 }
 
-// コメントを追加
-// async function addComment(postId: string, authorName: string, content: string) {
-//   const currentPost = await client.get({ endpoint: "blog", contentId: postId });
-//   const currentComments = currentPost.comments || [];
+// 特定の記事のコメントを取得
+async function getComments(blogId: string): Promise<Comment[]> {
+  const data = await client.get({
+    endpoint: "comments",
+    queries: {
+      filters: `blogId[equals]${blogId}`,
+      orders: "-createdAt",
+    },
+  });
+  return data.contents;
+}
 
-//   const newComment = {
-//     commentAuthorName: authorName,
-//     commentContent: content,
-//     commentCreatedAt: new Date().toISOString(),
-//   };
-
-//   await client.update({
-//     endpoint: "blog",
-//     contentId: postId,
-//     content: {
-//       comments: [...currentComments, newComment],
-//     },
-//   });
-// }
 // コメントを追加する関数を修正
-async function addComment(postId: string, authorName: string, content: string) {
-  console.log("Adding comment...", { postId, authorName, content });
-
+async function addComment(blogId: string, name: string, content: string) {
   try {
-    const currentPost = await client.get({
-      endpoint: "blog",
-      contentId: postId,
-    });
-    console.log("Current post:", currentPost);
-
-    const currentComments = currentPost.comments || [];
-    const newComment = {
-      commentAuthorName: authorName,
-      commentContent: content,
-      commentCreatedAt: new Date().toISOString(),
-    };
-
-    const result = await writeClient.update({
-      endpoint: "blog",
-      contentId: postId,
+    const result = await writeClient.create({
+      endpoint: "comments",
       content: {
-        comments: [...currentComments, newComment],
+        name,
+        content,
+        blogId,
       },
     });
-
-    console.log("Comment added successfully:", result);
     return result;
   } catch (error) {
     console.error("Error in addComment:", error);
@@ -88,47 +67,41 @@ async function addComment(postId: string, authorName: string, content: string) {
 }
 
 export default function BlogPostPage({ params }: { params: { id: string } }) {
-  const [post, setPost] = useState<Props | null>(null);
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPost = async () => {
+    async function fetchData() {
       try {
-        const data = await getBlogPost(params.id);
-        setPost(data);
+        const [postData, commentsData] = await Promise.all([
+          getBlogPost(params.id),
+          getComments(params.id),
+        ]);
+        setPost(postData);
+        setComments(commentsData);
       } catch (error) {
-        console.error("Failed to fetch post:", error);
+        console.error("データの取得に失敗しました:", error);
       } finally {
         setIsLoading(false);
       }
-    };
-    fetchPost();
+    }
+    fetchData();
   }, [params.id]);
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <LoadingSpinner />;
   if (!post) return <div>記事が見つかりません</div>;
 
-  // const handleCommentSubmit = async (authorName: string, content: string) => {
-  //   try {
-  //     await addComment(params.id, authorName, content);
-  //     // 記事を再取得して最新のコメントを表示
-  //     const updatedPost = await getBlogPost(params.id);
-  //     setPost(updatedPost);
-  //   } catch (error) {
-  //     console.error("Failed to add comment:", error);
-  //     alert("コメントの投稿に失敗しました");
-  //   }
-  // };
-  // handleCommentSubmit関数も修正
-  const handleCommentSubmit = async (authorName: string, content: string) => {
+  // handleCommentSubmit関数を修正
+  const handleCommentSubmit = async (name: string, content: string) => {
     try {
-      await addComment(params.id, authorName, content);
-      // 記事を再取得して最新のコメントを表示
-      const updatedPost = await getBlogPost(params.id);
-      setPost(updatedPost);
+      await addComment(params.id, name, content);
+      // コメントを再取得して表示を更新
+      const updatedComments = await getComments(params.id);
+      setComments(updatedComments);
       alert("コメントを投稿しました！");
     } catch (error: any) {
-      console.error("Failed to add comment:", error);
+      console.error("コメントの投稿に失敗しました:", error);
       alert(
         error?.message ||
           "コメントの投稿に失敗しました。書き込み用APIキーが正しく設定されているか確認してください。"
@@ -193,34 +166,52 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
 
       {/* コメントセクション */}
       <div className="mt-16 border-t pt-8">
-        <h2 className="text-2xl font-bold mb-8">コメント</h2>
+        <h2 className="text-2xl font-bold mb-8 flex items-center">
+          <i className="fas fa-comments text-green-400 mr-3"></i>
+          コメント
+        </h2>
 
         {/* コメント一覧 */}
         <div className="space-y-6 mb-12">
-          {post.comments && post.comments.length > 0 ? (
-            post.comments.map((comment, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4">
+          {comments.length > 0 ? (
+            comments.map((comment) => (
+              <div
+                key={comment.id}
+                className="bg-gray-50 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-300"
+              >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">
-                    {comment.commentAuthorName}
+                  <span className="flex items-center">
+                    <i className="fas fa-user-circle text-blue-400 text-lg mr-3"></i>
+                    <span className="font-medium text-gray-800">
+                      {comment.name}
+                    </span>
                   </span>
-                  <time className="text-sm text-gray-500">
-                    {dayjs(comment.commentCreatedAt).format("YYYY/MM/DD HH:mm")}
+                  <time className="text-sm text-gray-500 flex items-center">
+                    <i className="fas fa-clock text-gray-400 mr-1.5"></i>
+                    {dayjs(comment.postedAt).format("YYYY/MM/DD HH:mm")}
                   </time>
                 </div>
-                <p className="text-gray-700 whitespace-pre-wrap">
-                  {comment.commentContent}
+                <p className="text-gray-700 whitespace-pre-wrap pl-8 mt-2">
+                  <i className="fas fa-quote-left text-gray-300 mr-2 text-sm"></i>
+                  {comment.content}
+                  <i className="fas fa-quote-right text-gray-300 ml-2 text-sm"></i>
                 </p>
               </div>
             ))
           ) : (
-            <p className="text-gray-500">まだコメントはありません</p>
+            <p className="text-gray-500 text-center">
+              <i className="fas fa-comment-slash text-gray-300 mr-2"></i>
+              まだコメントはありません
+            </p>
           )}
         </div>
 
         {/* コメントフォーム */}
         <div>
-          <h3 className="text-xl font-bold mb-4">コメントを投稿</h3>
+          <h3 className="text-xl font-bold mb-4 flex items-center">
+            <i className="fas fa-edit text-green-400 mr-3"></i>
+            コメントを投稿
+          </h3>
           <CommentForm onSubmit={handleCommentSubmit} />
         </div>
       </div>
